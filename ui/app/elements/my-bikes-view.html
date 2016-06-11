@@ -1,0 +1,143 @@
+<!--
+@license
+Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../bower_components/polymer/polymer.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../bower_components/iron-list/iron-list.html">
+<link rel="import" href="../bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="../bower_components/google-signin/google-signin.html">
+<link rel="import" href="../bower_components/iron-flex-layout/iron-flex-layout-classes.html">
+
+<dom-module id="my-bikes-view">
+
+  <template>
+
+    <style include="iron-flex iron-flex-alignment"></style>
+
+    <style>
+      :host {
+        display: block;
+        padding: 10px;
+      }
+      .card {
+        box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 1px 5px 0 rgba(0, 0, 0, 0.12), 0 3px 1px -2px rgba(0, 0, 0, 0.2);
+        padding: 16px;
+        margin: 24px;
+        border-radius: 5px;
+        background-color: #fff;
+        color: #757575;
+      }
+      .circle {
+        display: inline-block;
+        height: 64px;
+        width: 64px;
+        border-radius: 50%;
+        background: #ddd;
+        line-height: 64px;
+        font-size: 30px;
+        color: #555;
+        text-align: center;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 16px 0;
+        color: #212121;
+      }
+      .row {
+        margin: 10px 0;
+      }
+    </style>
+
+    <google-signin-aware
+        client-id="264865392488-952kbgdj655uc1f9d3te8c6nkd762tba.apps.googleusercontent.com"
+        scopes="{{scope}}"
+        signed-in="{{signedIn}}"
+        is-authorized="{{isAuthorized}}"
+        need-additional-auth="{{needAdditionalAuth}}"
+        on-google-signin-aware-success="handleSignIn">
+    </google-signin-aware>
+
+    <iron-ajax
+      id="fetchBikes"
+      url='http://localhost:5984/stolen_bike/_design/by_owner/_view/by_owner?key="{{currentUser}}"'
+      handle-as="json"
+      on-response="handleListResponse"
+      debounce-duration="300">
+    </iron-ajax>
+
+    <div class="card">
+      <h1>My bikes</h1>
+
+      <template is="dom-repeat" items="{{bikes}}">
+        <div class="row layout horizontal center">
+          <template is="dom-if" if="[[item.photo]]">
+            <img class="avatar" src="[[item.photo]]" />
+          </template>
+
+          <div class="flex">[[item.model]]</div>
+
+          <template is="dom-if" if="[[!item.stolen]]">
+            <paper-button raised on-tap="stolen" data-uuid$="[[item._id]]" data-rev$="[[item._rev]]">stolen!</paper-button>
+          </template>
+
+          <template is="dom-if" if="[[item.stolen]]">
+            <paper-button raised class="flex-0" on-tap="found" data-uuid$="[[item._id]]" data-rev$="[[item._rev]]">found!</paper-button>
+          </template>
+        </div>
+      </template>
+    </div>
+
+  </template>
+
+  <script>
+    Polymer({
+      is: 'my-bikes-view',
+
+      attached: function () {
+        this.db = {
+          server: 'http://localhost:5984',
+          name: 'stolen_bike'
+        };
+
+        qwest.base = this.db.server;
+        qwest.setDefaultOptions({
+          cache: true,
+          dataType: 'json',
+          responseType: 'json'
+        });
+      },
+      handleSignIn: function () {
+        this.currentUser = gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile().getEmail();
+        this.$.fetchBikes.generateRequest()
+      },
+      handleListResponse: function (_evt, request) {
+        this.bikes = request.xhr.response.rows.map(r => r.value);
+      },
+      updateRecord: function (uuid, newData) {
+        qwest
+          .get(`/${this.db.name}/${uuid}`)
+          .then((_xhr, data) => {
+            Object.assign(data, newData);
+            return qwest.put(`/${this.db.name}/${uuid}`, data);
+          })
+          .then((_xhr, data) => {
+            this.$.fetchBikes.generateRequest();
+          });
+      },
+      stolen: function (e) {
+        this.updateRecord(e.target.dataset.uuid, { stolen: true });
+      },
+      found: function (e) {
+        this.updateRecord(e.target.dataset.uuid, { stolen: false });
+      }
+    });
+  </script>
+
+</dom-module>

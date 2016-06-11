@@ -1,0 +1,125 @@
+<link rel="import" href="../bower_components/polymer/polymer.html">
+<link rel="import" href="../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../bower_components/iron-form/iron-form.html">
+
+<dom-module id="add-bike-view">
+
+  <template>
+
+    <style>
+      :host {
+        display: block;
+        padding: 10px;
+      }
+      .card {
+        box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 1px 5px 0 rgba(0, 0, 0, 0.12), 0 3px 1px -2px rgba(0, 0, 0, 0.2);
+        padding: 16px;
+        margin: 24px;
+        border-radius: 5px;
+        background-color: #fff;
+        color: #757575;
+      }
+      .circle {
+        display: inline-block;
+        height: 64px;
+        width: 64px;
+        border-radius: 50%;
+        background: #ddd;
+        line-height: 64px;
+        font-size: 30px;
+        color: #555;
+        text-align: center;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 16px 0;
+        color: #212121;
+      }
+      .paper-button[elevation="1"] {
+        box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 1px 5px 0 rgba(0, 0, 0, 0.12), 0 3px 1px -2px rgba(0, 0, 0, 0.2);
+      }
+    </style>
+
+    <google-signin-aware
+      client-id="264865392488-952kbgdj655uc1f9d3te8c6nkd762tba.apps.googleusercontent.com"
+      scopes="{{scope}}"
+      signed-in="{{signedIn}}"
+      is-authorized="{{isAuthorized}}"
+      need-additional-auth="{{needAdditionalAuth}}">
+    </google-signin-aware>
+
+    <div class="card">
+      <div class="circle">2</div>
+      <h1>Add your bike</h1>
+
+      <form is="iron-form" id="new_bike_form" content-type="application/x-www-form-urlencoded">
+        <paper-input name="model" label="Model *" error-message="This field is required" placeholder="Producer, series, text on the frame or at least its color"></paper-input>
+
+        <paper-input name="beacon_uuid" label="Beacon ID *" error-message="This field is required" placeholder="ID of the beacon installed on your bike"></paper-input>
+
+        <paper-input name="photo" label="Photo" type="file" placeholder="Photo"></paper-input>
+
+        <paper-button raised on-tap="save">Save</paper-button>
+      </form>
+    </div>
+  </template>
+
+  <script>
+
+    Polymer({
+      is: 'add-bike-view',
+      save: function () {
+        var docUUID = null;
+        var photoUUID = null;
+
+        var db = {
+          server: 'http://localhost:5984',
+          name: 'stolen_bike'
+        };
+
+        var form = this.$.new_bike_form;
+        var formData = form.serialize();
+        var photoInput = form.querySelector('[name=photo]').inputElement;
+
+        photoData = photoInput.files && photoInput.files.length > 0 && photoInput.files[0];
+
+        formData.owner = gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile().getEmail();
+
+        qwest.base = db.server;
+        qwest.setDefaultOptions({
+          cache: true,
+          dataType: 'json'
+        });
+
+        qwest
+          .get('/_uuids?count=2')
+          .then(function (_xhr, data) {
+            debugger;
+
+            data = JSON.parse(data);
+
+            let uuids = data['uuids'];
+
+            docUUID = uuids[0];
+            photoUUID = uuids[1];
+
+            return qwest.put(`/${db.name}/${docUUID}`, formData);
+          })
+          .then(function (_xhr, data) {
+            debugger;
+
+            let doc = JSON.parse(data);
+            let docRev = doc['rev'];
+
+            return qwest.put(`/${db.name}/${docUUID}/${photoUUID}?rev=${docRev}`, photoData, { dataType: 'blob' });
+          })
+          .then(function (_xhr, data) {
+            debugger;
+          });
+      }
+    });
+
+  </script>
+
+</dom-module>

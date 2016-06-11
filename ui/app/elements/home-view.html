@@ -1,0 +1,73 @@
+<link rel="import" href="../bower_components/polymer/polymer.html">
+<link rel="import" href="../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../bower_components/paper-input/paper-input-error.html">
+<link rel="import" href="../bower_components/google-signin/google-signin.html">
+
+<dom-module id="home-view">
+
+  <template>
+
+    <style>
+      :host {
+        display: block;
+        padding: 10px;
+      }
+      .card {
+        box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 1px 5px 0 rgba(0, 0, 0, 0.12), 0 3px 1px -2px rgba(0, 0, 0, 0.2);
+        padding: 16px;
+        margin: 24px;
+        border-radius: 5px;
+        background-color: #fff;
+        color: #757575;
+      }
+      .circle {
+        display: inline-block;
+        height: 64px;
+        width: 64px;
+        border-radius: 50%;
+        background: #ddd;
+        line-height: 64px;
+        font-size: 30px;
+        color: #555;
+        text-align: center;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 16px 0;
+        color: #212121;
+      }
+    </style>
+
+    <div class="card">
+      <div class="circle">1</div>
+
+      <template is="dom-if" if="{{!signedIn}}">
+        <h1>Sign in</h1>
+      </template>
+
+      <template is="dom-if" if="{{signedIn}}">
+        <h1>Sign out</h1>
+      </template>
+
+      <google-signin client-id="264865392488-952kbgdj655uc1f9d3te8c6nkd762tba.apps.googleusercontent.com" scopes="email" google-signin-success="{{signedIn}}"></google-signin>
+
+      <google-signin-aware
+        scopes="{{scope}}"
+        signed-in="{{signedIn}}"
+        is-authorized="{{isAuthorized}}"
+        need-additional-auth="{{needAdditionalAuth}}"
+        on-google-signin-aware-success="handleSignIn"
+        on-google-signin-aware-signed-out="handleSignOut">
+      </google-signin-aware>
+    </div>
+  </template>
+
+  <script>
+    Polymer({
+      is: 'home-view',
+      handleSignIn: function () {
+        console.log("CURRENT USER:", gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile().getEmail());
+      }
+    });
+  </script>
+</dom-module>
